@@ -1,6 +1,5 @@
 """
-contains methods related to goal-directed traveling behaviour 
-and path planning
+Contine metodos relacionados a la planeacion de rutasa hacia el destino
 """
 
 import numpy as np
@@ -9,29 +8,23 @@ from motion import get_motion_parameters, update_randoms
 
 
 def go_to_location(patient, destination, location_bounds, dest_no=1):
-    """sends patient to defined location
+    """Envía un paciente a la ubicacion deseada
 
-    Function that takes a patient an destination, and sets the location
-    as active for that patient.
+    Función que toma un paciente y un destino, y establece la ubicación como activa para ese paciente.
 
     Keyword arguments
     -----------------
     patient : 1d array
-        1d array of the patient data, is a row from population matrix
+        Es una fila de la matriz de población
 
     destination : 1d array
-        1d array of the destination data, is a row from destination matrix
+        Es una fila de la matriz de destinos
 
     location_bounds : list or tuple
-        defines bounds for the location the patient will be roam in when sent
-        there. format: [xmin, ymin, xmax, ymax]
+        Define los limites en los que el paciente se puede mover
 
     dest_no : int
-        the location number, used as index for destinations array if multiple possible
-        destinations are defined`.
-
-
-    TODO: vectorize
+        Define el numero del destino al cual se debe llegar
 
     """
 
@@ -44,83 +37,74 @@ def go_to_location(patient, destination, location_bounds, dest_no=1):
     destination[(dest_no - 1) * 2] = x_center
     destination[((dest_no - 1) * 2) + 1] = y_center
 
-    patient[11] = dest_no  # set destination active
+    patient[11] = dest_no
 
     return patient, destination
 
 
 def set_destination(population, destinations):
-    """sets destination of population
+    """Configurar el destino de la pobalción
 
-    Sets the destination of population if destination marker is not 0.
-    Updates headings and speeds as well.
+    Establece el destino de la población si el marcador de destino no es 0. Actualiza también las cabeceras y las velocidades.
 
     Keyword arguments
     -----------------
     population : ndarray
-        the array containing all the population information
+        El arreglo que contiene la información de la población
 
     destinations : ndarray
-        the array containing all destinations information
+        El arreglo que contiene la información de los destinos
     """
 
-    # how many destinations are active
+    # Cuantos destinos estan activos
     active_dests = np.unique(population[:, 11][population[:, 11] != 0])
 
-    # set destination
+    # Configurar Destino
     for d in active_dests:
         dest_x = destinations[:, int((d - 1) * 2)]
         dest_y = destinations[:, int(((d - 1) * 2) + 1)]
 
-        # compute new headings
+        # Calcular nuevas direcciones
         head_x = dest_x - population[:, 1]
         head_y = dest_y - population[:, 2]
 
-        # head_x = head_x / np.sqrt(head_x)
-        # head_y = head_y / np.sqrt(head_y)
-
-        # reinsert headings into population of those not at destination yet
         population[:, 3][(population[:, 11] == d) & (population[:, 12] == 0)] = head_x[
             (population[:, 11] == d) & (population[:, 12] == 0)
         ]
         population[:, 4][(population[:, 11] == d) & (population[:, 12] == 0)] = head_y[
             (population[:, 11] == d) & (population[:, 12] == 0)
         ]
-        # set speed to 0.01
         population[:, 5][(population[:, 11] == d) & (population[:, 12] == 0)] = 0.02
 
     return population
 
 
 def check_at_destination(population, destinations, wander_factor=1.5, speed=0.01):
-    """check who is at their destination already
+    """comprobar quién se encuentra ya en su destino
 
-    Takes subset of population with active destination and
-    tests who is at the required coordinates. Updates at destination
-    column for people at destination.
+    Toma subconjunto de población con destino activo y comprueba quién se encuentra en las coordenadas requeridas. Actualiza en destino para las personas en destino.
 
     Keyword arguments
     -----------------
     population : ndarray
-        the array containing all the population information
+        El arreglo que contiene la información de la población
 
     destinations : ndarray
-        the array containing all destinations information
+        El arreglo que contiene la información de los destinos
 
     wander_factor : int or float
-        defines how far outside of 'wander range' the destination reached
-        is triggered
+        define a qué distancia fuera del "rango de recorrido" se alcanza el destino se activa
     """
 
-    # how many destinations are active
+    # Cuantos destinos estan activos
     active_dests = np.unique(population[:, 11][(population[:, 11] != 0)])
 
-    # see who is at destination
+    # Ver quien esta en el destino
     for d in active_dests:
         dest_x = destinations[:, int((d - 1) * 2)]
         dest_y = destinations[:, int(((d - 1) * 2) + 1)]
 
-        # see who arrived at destination and filter out who already was there
+        # ver quién ha llegado al destino y filtrar quién ya estaba allí
         at_dest = population[
             (np.abs(population[:, 1] - dest_x) < (population[:, 13] * wander_factor))
             & (np.abs(population[:, 2] - dest_y) < (population[:, 14] * wander_factor))
@@ -128,9 +112,9 @@ def check_at_destination(population, destinations, wander_factor=1.5, speed=0.01
         ]
 
         if len(at_dest) > 0:
-            # mark those as arrived
+            # Marcar como llegado
             at_dest[:, 12] = 1
-            # insert random headings and speeds for those at destination
+            # insertar cabeceras y velocidades aleatorias para los de destino
             at_dest = update_randoms(
                 at_dest,
                 pop_size=len(at_dest),
@@ -139,9 +123,7 @@ def check_at_destination(population, destinations, wander_factor=1.5, speed=0.01
                 speed_update_chance=1,
             )
 
-            # at_dest[:,5] = 0.001
-
-            # reinsert into population
+            # Re insertar a la población
             population[
                 (
                     np.abs(population[:, 1] - dest_x)
@@ -158,25 +140,22 @@ def check_at_destination(population, destinations, wander_factor=1.5, speed=0.01
 
 
 def keep_at_destination(population, destinations, wander_factor=1):
-    """keeps those who have arrived, within wander range
+    """mantiene a los que han llegado, al alcance de los vagabundos
 
-    Function that keeps those who have been marked as arrived at their
-    destination within their respective wander ranges
+    Función que mantiene a los que han sido marcados como llegados a su destino dentro de sus respectivos rangos de vagabundeo
 
     Keyword arguments
     -----------------
     population : ndarray
-        the array containing all the population information
+        El arreglo que contiene la información de la población
 
     destinations : ndarray
-        the array containing all destinations information
+        El arreglo que contiene la información de los destinos
 
     wander_factor : int or float
-        defines how far outside of 'wander range' the destination reached
-        is triggered
+        define a qué distancia fuera del "rango de recorrido" se alcanza el destino se activa
     """
 
-    # how many destinations are active
     active_dests = np.unique(
         population[:, 11][(population[:, 11] != 0) & (population[:, 12] == 1)]
     )
@@ -189,14 +168,10 @@ def keep_at_destination(population, destinations, wander_factor=1):
             (population[:, 12] == 1) & (population[:, 11] == d)
         ]
 
-        # see who is marked as arrived
         arrived = population[(population[:, 12] == 1) & (population[:, 11] == d)]
 
         ids = np.int32(arrived[:, 0])  # find unique IDs of arrived persons
 
-        # check if there are those out of bounds
-        # replace x oob
-        # where x larger than destination + wander, AND heading wrong way, set heading negative
         shp = arrived[:, 3][
             arrived[:, 1] > (dest_x + (arrived[:, 13] * wander_factor))
         ].shape
@@ -205,21 +180,18 @@ def keep_at_destination(population, destinations, wander_factor=1):
             arrived[:, 1] > (dest_x + (arrived[:, 13] * wander_factor))
         ] = -np.random.normal(loc=0.5, scale=0.5 / 3, size=shp)
 
-        # where x smaller than destination - wander, set heading positive
         shp = arrived[:, 3][
             arrived[:, 1] < (dest_x - (arrived[:, 13] * wander_factor))
         ].shape
         arrived[:, 3][
             arrived[:, 1] < (dest_x - (arrived[:, 13] * wander_factor))
         ] = np.random.normal(loc=0.5, scale=0.5 / 3, size=shp)
-        # where y larger than destination + wander, set heading negative
         shp = arrived[:, 4][
             arrived[:, 2] > (dest_y + (arrived[:, 14] * wander_factor))
         ].shape
         arrived[:, 4][
             arrived[:, 2] > (dest_y + (arrived[:, 14] * wander_factor))
         ] = -np.random.normal(loc=0.5, scale=0.5 / 3, size=shp)
-        # where y smaller than destination - wander, set heading positive
         shp = arrived[:, 4][
             arrived[:, 2] < (dest_y - (arrived[:, 14] * wander_factor))
         ].shape
@@ -227,37 +199,35 @@ def keep_at_destination(population, destinations, wander_factor=1):
             arrived[:, 2] < (dest_y - (arrived[:, 14] * wander_factor))
         ] = np.random.normal(loc=0.5, scale=0.5 / 3, size=shp)
 
-        # slow speed
+        # Reducir velocidad
         arrived[:, 5] = np.random.normal(
             loc=0.005, scale=0.005 / 3, size=arrived[:, 5].shape
         )
 
-        # reinsert into population
+        # Reinsertar en la población
         population[(population[:, 12] == 1) & (population[:, 11] == d)] = arrived
 
     return population
 
 
 def reset_destinations(population, ids=[]):
-    """clears destination markers
+    """Limpia los marcadores de destino
 
-    Function that clears all active destination markers from the population
+    Función que borra todos los marcadores de destino activos de la población
 
     Keyword arguments
     -----------------
     population : ndarray
-        the array containing all the population information
+        El arreglo que contiene toda la información de la población
 
     ids : ndarray or list
-        array containing the id's of the population members that need their
-        destinations reset
+        Arreglo de los ids de los miembros de la población que necesitan reiniciar sus destinos
     """
 
     if len(ids) == 0:
-        # if ids empty, reset everyone
+        # Si Ids esta vacio, reiniciar todos los destinos.
         population[:, 11] = 0
     else:
         pass
-        # else, reset id's
 
     pass

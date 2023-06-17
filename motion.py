@@ -1,24 +1,22 @@
 """
-file that contains all function related to population mobility
-and related computations
+Contiene todos los metodos relacionados con la mobilidad
 """
 
 import numpy as np
 
 
 def update_positions(population):
-    """update positions of all people
+    """Actualiza la pocision de todas las personas
 
-    Uses heading and speed to update all positions for
-    the next time step
+    Use la velocidad y la direccion para actualizar la pocision para el siguiente instante de tiempo
 
     Keyword arguments
     -----------------
     population : ndarray
-        the array containing all the population information
+        Contiene toda la informacion de la población
     """
 
-    # update positions
+    # Actualiza pocisiones en
     # x
     population[:, 1] = population[:, 1] + (population[:, 3] * population[:, 5])
     # y
@@ -28,22 +26,21 @@ def update_positions(population):
 
 
 def out_of_bounds(population, xbounds, ybounds):
-    """checks which people are about to go out of bounds and corrects
+    """comprueba qué personas están a punto de salirse de los límites y corrige
 
-    Function that updates headings of individuals that are about to
-    go outside of the world boundaries.
+    Función que actualiza las cabeceras de los individuos que están a punto de salir de los límites del mundo.
 
-    Keyword arguments
-    -----------------
-    population : ndarray
-        the array containing all the population information
+     Keyword arguments
+     -----------------
+     population : ndarray
+         Contiene toda la informacion de la población
 
-    xbounds, ybounds : list or tuple
-        contains the lower and upper bounds of the world [min, max]
+     xbounds, ybounds : list or tuple
+         Contiene los limites superior e inferior [min, max]
     """
-    # update headings and positions where out of bounds
-    # update x heading
-    # determine number of elements that need to be updated
+    # Actualiza la dirección cuando se encuentra en los limites
+    # Actualiza la dirección en X
+    # Determina la cantidad de elementos que necesitan ser actualizados
 
     shp = population[:, 3][
         (population[:, 1] <= xbounds[:, 0]) & (population[:, 3] < 0)
@@ -61,7 +58,7 @@ def out_of_bounds(population, xbounds, ybounds):
         -np.random.normal(loc=0.5, scale=0.5 / 3, size=shp), a_min=-1, a_max=-0.05
     )
 
-    # update y heading
+    # Actualiza la dirección en Y
     shp = population[:, 4][
         (population[:, 2] <= ybounds[:, 0]) & (population[:, 4] < 0)
     ].shape
@@ -90,37 +87,35 @@ def update_randoms(
     heading_multiplication=1,
     speed_multiplication=1,
 ):
-    """updates random states such as heading and speed
+    """actualiza estados aleatorios como el rumbo y la velocidad
 
-    Function that randomized the headings and speeds for population members
-    with settable odds.
+    Función que aleatoriza los encabezamientos y las velocidades de los miembros de la población con probabilidades ajustables.
 
     Keyword arguments
     -----------------
     population : ndarray
-        the array containing all the population information
+        El arreglo que contiene toda la información de la población
 
     pop_size : int
-        the size of the population
+        El tamaño de la poblacición
 
     heading_update_chance : float
-        the odds of updating the heading of each member, each time step
+        las probabilidades de actualizar la rúbrica de cada miembro, cada paso de tiempo
 
     speed_update_chance : float
-        the oodds of updating the speed of each member, each time step
+        las probabilidades de actualizar la velocidad de cada miembro, cada paso de tiempo
 
     heading_multiplication : int or float
-        factor to multiply heading with (default headings are between -1 and 1)
+        factor por el que multiplicar la dirección (las direeciones por defecto están entre -1 y 1)
 
     speed_multiplication : int or float
-        factor to multiply speed with (default speeds are between 0.0001 and 0.05
+        factor por el que multiplicar la velocidad (las velocidades por defecto están entre 0.0001 y 0.05)
 
     speed : int or float
-        mean speed of population members, speeds will be taken from gaussian distribution
-        with mean 'speed' and sd 'speed / 3'
+        velocidad media de los miembros de la población, las velocidades se tomarán de una distribución gaussiana con media 'velocidad' y sd 'velocidad / 3'
     """
 
-    # randomly update heading
+    # Actualiza la dirección aleatoriamente
     # x
     update = np.random.random(size=(pop_size,))
     shp = update[update <= heading_update_chance].shape
@@ -133,7 +128,7 @@ def update_randoms(
     population[:, 4][update <= heading_update_chance] = (
         np.random.normal(loc=0, scale=1 / 3, size=shp) * heading_multiplication
     )
-    # randomize speeds
+    # Aleatoriza la velocidad
     update = np.random.random(size=(pop_size,))
     shp = update[update <= heading_update_chance].shape
     population[:, 5][update <= heading_update_chance] = (
@@ -145,15 +140,14 @@ def update_randoms(
 
 
 def get_motion_parameters(xmin, ymin, xmax, ymax):
-    """gets destination center and wander ranges
+    """obtiene centro de destino y rangos de recorrido
 
-    Function that returns geometric parameters of the destination
-    that the population members have set.
+    Función que devuelve los parámetros geométricos del destino que han establecido los miembros de la población.
 
     Keyword arguments:
     ------------------
         xmin, ymin, xmax, ymax : int or float
-        lower and upper bounds of the destination area set.
+        Limites superiores e inferiores del area
 
     """
 

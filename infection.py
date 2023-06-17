@@ -1,8 +1,8 @@
 """
-this file contains all functions required in computing
-new infections, recoveries, and deaths
+contiene todas las funciones necesarias para calcular
+nuevas infecciones, recuperaciones y muertes
 """
-# let's make one more productive change here, shall we?
+
 
 import numpy as np
 from path_planning import go_to_location
@@ -15,26 +15,25 @@ def find_nearby(
     kind="healthy",
     infected_previous_step=[],
 ):
-    """finds nearby IDs
-
-    Keyword Arguments
+    """
+    Argumentos clave
     -----------------
 
-    kind : str (can be 'healthy' or 'infected')
-        determines whether infected or healthy individuals are returned
-        within the infection_zone
+    kind : str (puede ser 'healthy' o 'infected')
+        determina si se devuelven individuos infectados o sanos 
+        dentro de la zona de infección
 
 
-    Returns
+    Retorna
     -------
-    if kind='healthy', indices of healthy agents within the infection
-    zone is returned. This is because for each healthy agent, the chance to
-    become infected needs to be tested
+    if kind='healthy', se devuelven los índices de agentes sanos dentro de la zona de 
+    infección. Esto se debe a que para cada agente sano, 
+    se debe evaluar la posibilidad de infectarse.
 
-    if kind='infected', only the number of infected within the infection zone is
-    returned. This is because in this situation, the odds of the healthy agent at
-    the center of the infection zone depend on how many infectious agents are around
-    it.
+    if kind='infected', solo se devuelve el número de infectados dentro de la zona de 
+    infección. Esto se debe a que, en esta situación, las probabilidades de que el 
+    agente sano esté en el centro de la zona de infección dependen de cuántos agentes 
+    infecciosos haya a su alrededor.
     """
 
     if kind.lower() == "healthy":
@@ -89,67 +88,64 @@ def infect(
     location_no=1,
     location_odds=1.0,
 ):
-    """finds new infections.
+    """encuentra nuevas infecciones
 
-    Function that finds new infections in an area around infected persens
-    defined by infection_range, and infects others with chance infection_chance
+    Función que encuentra nuevas infecciones en un área alrededor de personas infectadas 
+    definidas por infection_range, y la oportunidad de infertar a otros infection_chance
 
-    Keyword arguments
+    Argumentos clave
     -----------------
     population : ndarray
-        array containing all data on the population
+        matriz que contiene los datos sobre la población
 
     pop_size : int
-        the number if individuals in the population
+        número de individuos en la población
 
     infection_range : float
-        the radius around each infected person where transmission of virus can take place
+        radio alrededor de cada persona infectada donde puede tener lugar 
+        la transmisión del virus
 
     infection_chance : float
-        the odds that the virus infects someone within range (range 0 to 1)
+        probabilidades de que el virus infecte a alguien dentro del rango (rango 0 a 1)
 
     frame : int
-        the current timestep of the simulation
+        paso de tiempo actual en la simulación
 
     healthcare_capacity : int
-        the number of places available in the healthcare system
+        número de camas disponibles en el sistema sanitario
 
     verbose : bool
-        whether to report illness events
+        si reportar eventos de enfermedad
 
     send_to_location : bool
-        whether to give infected people a destination
+        si dar a las personas infectadas un destino
 
     location_bounds : list
-        the location bounds where the infected person is sent to and can roam
-        within (xmin, ymin, xmax, ymax)
+        límites de ubicación a donde se envía a la persona infectada y puede deambular
 
     destinations : list or ndarray
-        the destinations vector containing destinations for each individual in the population.
-        Needs to be of same length as population
+        vector de destinos que contiene destinos para cada individuo de la población.
 
     location_no : int
-        the location number, used as index for destinations array if multiple possible
-        destinations are defined
+        índice para la matriz de destinos si se definen múltiples destinos posibles
 
     location_odds: float
-        the odds that someone goes to a location or not. Can be used to simulate non-compliance
-        to for example self-isolation.
+        probabilidades de que alguien vaya a un lugar o no.
 
     traveling_infects : bool
-        whether infected people heading to a destination can still infect others on the way there
+        si las personas infectadas que se dirigen a un destino aún pueden infectar a otros en el camino hacia allí
     """
 
-    # mark those already infected first
+    # marcar primero a los que ya están infectados
     infected_previous_step = population[population[:, 6] == 1]
     healthy_previous_step = population[population[:, 6] == 0]
 
     new_infections = []
 
-    # if less than half are infected, slice based on infected (to speed up computation)
+    # si menos de la mitad están infectados, se divide en función de los infectados para acelerar el cálculo
     if len(infected_previous_step) < (Config.pop_size // 2):
         for patient in infected_previous_step:
-            # define infection zone for patient
+            # zona de infección para el paciente
             infection_zone = [
                 patient[1] - Config.infection_range,
                 patient[2] - Config.infection_range,
@@ -157,14 +153,14 @@ def infect(
                 patient[2] + Config.infection_range,
             ]
 
-            # find healthy people surrounding infected patient
+            # personas sanas que rodean al paciente infectado
             if Config.traveling_infects or patient[11] == 0:
                 indices = find_nearby(population, infection_zone, kind="healthy")
             else:
                 indices = []
 
             for idx in indices:
-                # roll die to see if healthy person will be infected
+                # tirar el dado para ver si una persona sana se infecta
                 if np.random.random() < Config.infection_chance:
                     population[idx][6] = 1
                     population[idx][8] = frame
@@ -174,7 +170,7 @@ def infect(
                     ):
                         population[idx][10] = 1
                         if send_to_location:
-                            # send to location if die roll is positive
+                            # enviar a la ubicación si la tirada es positiva
                             if np.random.uniform() <= location_odds:
                                 population[idx], destinations[idx] = go_to_location(
                                     population[idx],
@@ -187,10 +183,10 @@ def infect(
                     new_infections.append(idx)
 
     else:
-        # if more than half are infected slice based in healthy people (to speed up computation)
+        # si más de la mitad están infectados, basado en personas sanas para acelerar el cálculo
 
         for person in healthy_previous_step:
-            # define infecftion range around healthy person
+            # Definir el rango de infección en torno a una persona sana.
             infection_zone = [
                 person[1] - Config.infection_range,
                 person[2] - Config.infection_range,
@@ -200,8 +196,8 @@ def infect(
 
             if (
                 person[6] == 0
-            ):  # if person is not already infected, find if infected are nearby
-                # find infected nearby healthy person
+            ):  # si la persona aún no está infectada, averiguar si hay infectados cerca
+                # encontrar una persona sana cercana infectada
                 if Config.traveling_infects:
                     poplen = find_nearby(
                         population,
@@ -220,7 +216,7 @@ def infect(
 
                 if poplen > 0:
                     if np.random.random() < (Config.infection_chance * poplen):
-                        # roll die to see if healthy person will be infected
+                        # Tira el dado para ver si la persona sana se infectará
                         population[np.int32(person[0])][6] = 1
                         population[np.int32(person[0])][8] = frame
                         if (
@@ -229,7 +225,7 @@ def infect(
                         ):
                             population[np.int32(person[0])][10] = 1
                             if send_to_location:
-                                # send to location and add to treatment if die roll is positive
+                                # enviar al lugar y añadir al tratamiento si la tirada es positiva
                                 if np.random.uniform() < location_odds:
                                     (
                                         population[np.int32(person[0])],
@@ -253,56 +249,55 @@ def infect(
 
 
 def recover_or_die(population, frame, Config):
-    """see whether to recover or die
+    """ver si recuperarse o morir
 
 
-    Keyword arguments
+    Argumentos Clave
     -----------------
     population : ndarray
-        array containing all data on the population
+        matriz que contiene todos los datos sobre la población
 
     frame : int
-        the current timestep of the simulation
+        El instatne de tiempo actual de la simulación
 
     recovery_duration : tuple
-        lower and upper bounds of duration of recovery, in simulation steps
+        límites inferior y superior de la duración de la recuperación, en pasos de simulación
 
     mortality_chance : float
-        the odds that someone dies in stead of recovers (between 0 and 1)
+        las probabilidades de que alguien muera en lugar de recuperarse (entre 0 y 1)
 
     risk_age : int or flaot
-        the age from which mortality risk starts increasing
+        la edad a partir de la cual empieza a aumentar el riesgo de mortalidad
 
     critical_age: int or float
-        the age where mortality risk equals critical_mortality_change
+        la edad en la que el riesgo de mortalidad es igual al critical_mortality_change
 
     critical_mortality_chance : float
-        the heightened odds that an infected person has a fatal ending
+        las mayores probabilidades de que una persona infectada tenga un desenlace fatal
 
     risk_increase : string
-        can be 'quadratic' or 'linear', determines whether the mortality risk
-        between the at risk age and the critical age increases linearly or
-        exponentially
+        puede ser "cuadrática" o "lineal", determina si el riesgo de mortalidad entre 
+        la edad de riesgo y la edad crítica aumenta de forma lineal o exponencialmente
 
     no_treatment_factor : int or float
         defines a change in mortality odds if someone cannot get treatment. Can
         be larger than one to increase risk, or lower to decrease it.
 
     treatment_dependent_risk : bool
-        whether availability of treatment influences patient risk
+        si la disponibilidad de tratamiento influye en el riesgo del paciente
 
     treatment_factor : int or float
-        defines a change in mortality odds if someone is in treatment. Can
-        be larger than one to increase risk, or lower to decrease it.
+        define un cambio en las probabilidades de mortalidad si alguien está en tratamiento. 
+        Puede ser mayor que uno para aumentar el riesgo, o menor para disminuirlo.
 
     verbose : bool
-        whether to report to terminal the recoveries and deaths for each simulation step
+        si se informa a la terminal de las recuperaciones y muertes de cada paso de la simulación
     """
 
-    # find infected people
+    # Encontrar personas infectadas
     infected_people = population[population[:, 6] == 1]
 
-    # define vector of how long everyone has been sick
+    # Define el vector de por cuanto tiempo la persona va a estar enferma
     illness_duration_vector = frame - infected_people[:, 8]
 
     recovery_odds_vector = (
@@ -310,7 +305,7 @@ def recover_or_die(population, frame, Config):
     ) / np.ptp(Config.recovery_duration)
     recovery_odds_vector = np.clip(recovery_odds_vector, a_min=0, a_max=None)
 
-    # update states of sick people
+    # Actualiza el estado de los riesgos de las personas
     indices = infected_people[:, 0][recovery_odds_vector >= infected_people[:, 9]]
 
     recovered = []
@@ -318,8 +313,7 @@ def recover_or_die(population, frame, Config):
 
     # decide whether to die or recover
     for idx in indices:
-        # check if we want risk to be age dependent
-        # if age_dependent_risk:
+        # Si la edad altera el riesgo
         if Config.age_dependent_risk:
             updated_mortality_chance = compute_mortality(
                 infected_people[infected_people[:, 0] == idx][:, 7][0],
@@ -336,7 +330,7 @@ def recover_or_die(population, frame, Config):
             infected_people[infected_people[:, 0] == int(idx)][:, 10] == 0
             and Config.treatment_dependent_risk
         ):
-            # if person is not in treatment, increase risk by no_treatment_factor
+            # Si la persona no esta en tratamiento se aumenta el riesgo 
             updated_mortality_chance = (
                 updated_mortality_chance * Config.no_treatment_factor
             )
@@ -344,20 +338,20 @@ def recover_or_die(population, frame, Config):
             infected_people[infected_people[:, 0] == int(idx)][:, 10] == 1
             and Config.treatment_dependent_risk
         ):
-            # if person is in treatment, decrease risk by
+            # Si la persona se encuentra en tratamiento, disminuye el riesgo
             updated_mortality_chance = (
                 updated_mortality_chance * Config.treatment_factor
             )
 
         if np.random.random() <= updated_mortality_chance:
-            # die
+            # Muere
             infected_people[:, 6][infected_people[:, 0] == idx] = 3
             infected_people[:, 10][infected_people[:, 0] == idx] = 0
             fatalities.append(
                 np.int32(infected_people[infected_people[:, 0] == idx][:, 0][0])
             )
         else:
-            # recover (become immune)
+            # Recuperado: se vuelve inmune
             infected_people[:, 6][infected_people[:, 0] == idx] = 2
             infected_people[:, 10][infected_people[:, 0] == idx] = 0
             recovered.append(
@@ -369,7 +363,7 @@ def recover_or_die(population, frame, Config):
     if len(recovered) > 0 and Config.verbose:
         print("\nat timestep %i these people recovered: %s" % (frame, recovered))
 
-    # put array back into population
+    # Reinsertar a la población
     population[population[:, 6] == 1] = infected_people
 
     return population
@@ -383,86 +377,85 @@ def compute_mortality(
     critical_mortality_chance=0.5,
     risk_increase="linear",
 ):
-    """compute mortality based on age
+    """Calcular la mortalidad basado en la edad
 
-    The risk is computed based on the age, with the risk_age marking
-    the age where risk starts increasing, and the crticial age marks where
-    the 'critical_mortality_odds' become the new mortality chance.
+   El riesgo se calcula en función de la edad. la edad en la que el riesgo empieza
+     a aumentar, y la edad crticial marca el momento en el que las 'critical_mortality_odds' 
+     se convierten en la nueva probabilidad de mortalidad.
 
-    Whether risk increases linearly or quadratic is settable.
+    Se puede establecer si el riesgo aumenta de forma lineal o cuadrática.
 
-    Keyword arguments
+    Argumentos clave
     -----------------
     age : int
-        the age of the person
+        La edad de la persona
 
     mortality_chance : float
-        the base mortality chance
-        can be very small but cannot be zero if increase is quadratic.
+        La probabilidad base de mortalidad
 
     risk_age : int
-        the age from which risk starts increasing
+        La edad a la que el riesgo empieza a aumentar
 
     critical_age : int
-        the age where mortality risk equals the specified
+        la edad en la que el riesgo de mortalidad es igual a la
         critical_mortality_odds
 
     critical_mortality_chance : float
-        the odds of dying at the critical age
+        las probabilidades de morir a la edad crítica
 
     risk_increase : str
-        defines whether the mortality risk between the at risk age
-        and the critical age increases linearly or exponentially
+       define si el riesgo de mortalidad entre la edad de riesgo y la edad 
+       crítica aumenta de forma lineal o exponencial
     """
 
-    if risk_age < age < critical_age:  # if age in range
+    if risk_age < age < critical_age:  # Si esta en el rango de edades
         if risk_increase == "linear":
-            # find linear risk
+            # Encontrar riesgo lineal
             step_increase = (critical_mortality_chance) / (
                 (critical_age - risk_age) + 1
             )
             risk = critical_mortality_chance - ((critical_age - age) * step_increase)
             return risk
         elif risk_increase == "quadratic":
-            # define exponential function between risk_age and critical_age
+            # define funcion exponencial entre risk_age y critical_age
             pw = 15
             A = np.exp(np.log(mortality_chance / critical_mortality_chance) / pw)
             a = ((risk_age - 1) - critical_age * A) / (A - 1)
             b = mortality_chance / ((risk_age - 1) + a) ** pw
 
-            # define linespace
+            # definir espacio lineal
             x = np.linspace(0, critical_age, critical_age)
-            # find values
+            # Encuetra valores
             risk_values = ((x + a) ** pw) * b
             return risk_values[np.int32(age - 1)]
     elif age <= risk_age:
-        # simply return the base mortality chance
+        # Retorna la probabilidad de muerte
         return mortality_chance
     elif age >= critical_age:
-        # simply return the maximum mortality chance
+        # Returna la probabilidad critica de muerte 
         return critical_mortality_chance
 
 
 def healthcare_infection_correction(worker_population, healthcare_risk_factor=0.2):
-    """corrects infection to healthcare population.
+    """corrige la infección a la población sanitaria.
 
-    Takes the healthcare risk factor and adjusts the sick healthcare workers
-    by reducing (if < 0) ir increasing (if > 0) sick healthcare workers
+    Toma el factor de riesgo sanitario y ajusta el personal sanitario enfermo reduciendo (si < 0) o 
+    aumentando (si > 0) el personal sanitario enfermo
 
     Keyword arguments
     -----------------
     worker_population : ndarray
-        the array containing all variables related to the healthcare population.
-        Is a subset of the 'population' matrix.
+        la matriz que contiene todas las variables relacionadas con la población sanitaria. 
+        Es un subconjunto de la matriz "población".
 
     healthcare_risk_factor : int or float
-        if other than one, defines the change in odds of contracting an infection.
-        Can be used to simulate healthcare personell having extra protections in place (< 1)
-        or being more at risk due to exposure, fatigue, or other factors (> 1)
+        si es distinto de uno, define el cambio en las probabilidades de contraer una infección. 
+        Puede utilizarse para simular que el personal sanitario dispone de protecciones adicionales 
+        (< 1) o que corren más riesgo debido a la exposición, la fatiga u otros factores (> 1)
     """
 
     if healthcare_risk_factor < 0:
-        # set 1 - healthcare_risk_factor workers to non sick
+        # Configurar 1 - healthcare_risk_factor no enfermos
         sick_workers = worker_population[:, 6][worker_population[:, 6] == 1]
         cure_vector = np.random.uniform((len(sick_workers)))
         sick_workers[:, 6][cure_vector >= healthcare_risk_factor] = 0
@@ -470,6 +463,6 @@ def healthcare_infection_correction(worker_population, healthcare_risk_factor=0.
         # TODO: make proportion of extra workers sick
         pass
     else:
-        pass  # if no changed risk, do nothing
+        pass  # Si no cambia el riesgo, no hacer nada
 
     return worker_population

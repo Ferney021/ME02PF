@@ -29,38 +29,23 @@ from population import (
 )
 from visualiser import build_fig, draw_tstep, plot_sir
 
-# set seed for reproducibility
-np.random.seed(100)
-
-# i'm supposed to make productive changes so this is going to be a
-# productive comment. YAY!
-
 
 class Simulation:
-    # TODO: if lockdown or otherwise stopped: destination -1 means no motion
     def __init__(self, *args, **kwargs):
-        # load default config data
+        # Cargar la configuracion por defecto
         self.Config = Configuration(*args, **kwargs)
         self.frame = 0
 
-        # initialize default population
+        # Inicializarla poblacion por defecto
         self.population_init()
 
         self.pop_tracker = Population_trackers()
 
-        # initalise destinations vector
-        self.destinations = initialize_destination_matrix(self.Config.pop_size, 1)
-
-    def reinitialise(self):
-        """reset the simulation"""
-
-        self.frame = 0
-        self.population_init()
-        self.pop_tracker = Population_trackers()
+        # Inicializar los vectores de destino
         self.destinations = initialize_destination_matrix(self.Config.pop_size, 1)
 
     def population_init(self):
-        """(re-)initializes population"""
+        """Re-Inicializa la poblacion"""
         self.population = initialize_population(
             self.Config,
             self.Config.mean_age,
@@ -71,18 +56,16 @@ class Simulation:
 
     def tstep(self):
         """
-        takes a time step in the simulation
+        Toma un instante de tiempo en la simulación
         """
 
         if self.frame == 0 and self.Config.visualise:
-            # initialize figure
+            # Mostrar ventana
             self.fig, self.spec, self.ax1, self.ax2 = build_fig(self.Config)
 
-        # check destinations if active
-        # define motion vectors if destinations active and not everybody is at destination
-        active_dests = len(
-            self.population[self.population[:, 11] != 0]
-        )  # look op this only once
+        # Verificar que el destino este activo
+        # Definir vectores de movimiento
+        active_dests = len(self.population[self.population[:, 11] != 0])
 
         if active_dests > 0 and len(self.population[self.population[:, 12] == 0]) > 0:
             self.population = set_destination(self.population, self.destinations)
@@ -94,13 +77,12 @@ class Simulation:
             )
 
         if active_dests > 0 and len(self.population[self.population[:, 12] == 1]) > 0:
-            # keep them at destination
             self.population = keep_at_destination(
                 self.population, self.destinations, self.Config.wander_factor
             )
 
-        # out of bounds
-        # define bounds arrays, excluding those who are marked as having a custom destination
+        # Fuera de limites
+        # Se definen arreglos de limites
         if len(self.population[:, 11] == 0) > 0:
             _xbounds = np.array(
                 [[self.Config.xbounds[0] + 0.02, self.Config.xbounds[1] - 0.02]]
@@ -114,7 +96,7 @@ class Simulation:
                 self.population[self.population[:, 11] == 0], _xbounds, _ybounds
             )
 
-        # set randoms
+        # Variables aleatorias
         if self.Config.lockdown:
             if len(self.pop_tracker.infectious) == 0:
                 mx = 0
@@ -126,30 +108,30 @@ class Simulation:
             ) * self.Config.lockdown_percentage or mx >= (
                 len(self.population) * self.Config.lockdown_percentage
             ):
-                # reduce speed of all members of society
+                # Reduce la velocidad de todos los miembros de la sociedad
                 self.population[:, 5] = np.clip(
                     self.population[:, 5], a_min=None, a_max=0.001
                 )
-                # set speeds of complying people to 0
+                # Ajustar la velocidad a 0 para las personas que cumplen la condición
                 self.population[:, 5][self.Config.lockdown_vector == 0] = 0
             else:
-                # update randoms
+                # Actualizar valores aleatorios
                 self.population = update_randoms(
                     self.population, self.Config.pop_size, self.Config.speed
                 )
         else:
-            # update randoms
+            # Actualizar valores aleatorios
             self.population = update_randoms(
                 self.population, self.Config.pop_size, self.Config.speed
             )
 
-        # for dead ones: set speed and heading to 0
+        # Para estados (dead) pone la velocidad en 0
         self.population[:, 3:5][self.population[:, 6] == 3] = 0
 
-        # update positions
+        # Actualizar pocisiones
         self.population = update_positions(self.population)
 
-        # find new infections
+        # Infectar
         self.population, self.destinations = infect(
             self.population,
             self.Config,
@@ -161,18 +143,16 @@ class Simulation:
             location_odds=self.Config.self_isolate_proportion,
         )
 
-        # recover and die
+        # Se decide el futuro de la persona
         self.population = recover_or_die(self.population, self.frame, self.Config)
 
-        # send cured back to population if self isolation active
-        # perhaps put in recover or die class
-        # send cured back to population
+        # Envia los curados de vuelta a la población
         self.population[:, 11][self.population[:, 6] == 2] = 0
 
-        # update population statistics
+        # Actualiza las estadisticas de la población
         self.pop_tracker.update_counts(self.population)
 
-        # visualise
+        # Mostrar gráfico
         if self.Config.visualise:
             draw_tstep(
                 self.Config,
@@ -185,11 +165,11 @@ class Simulation:
                 self.ax2,
             )
 
-        # report stuff to console
+        # Reportes por consola
         sys.stdout.write("\r")
         sys.stdout.write(
-            "%i: healthy: %i, infected: %i, immune: %i, in treatment: %i, \
-dead: %i, of total: %i"
+            "%i: Sanos: %i, Infectados: %i, Inmune: %i, En tratamiento: %i, \
+Fallecidos: %i, of Total: %i"
             % (
                 self.frame,
                 self.pop_tracker.susceptible[-1],
@@ -201,22 +181,15 @@ dead: %i, of total: %i"
             )
         )
 
-        # save popdata if required
+        # Guardar informacion si se requiere
         if self.Config.save_pop and (self.frame % self.Config.save_pop_freq) == 0:
             save_population(self.population, self.frame, self.Config.save_pop_folder)
-        # run callback
         self.callback()
 
-        # update frame
+        # Actualizar frame
         self.frame += 1
 
     def callback(self):
-        """placeholder function that can be overwritten.
-
-        By ovewriting this method any custom behaviour can be implemented.
-        The method is called after every simulation timestep.
-        """
-
         if self.frame == 50:
             print("\ninfecting patient zero")
             self.population[0][6] = 1
@@ -224,7 +197,7 @@ dead: %i, of total: %i"
             self.population[0][10] = 1
 
     def run(self):
-        """run simulation"""
+        """Correr Simulación"""
 
         i = 0
 
@@ -235,9 +208,8 @@ dead: %i, of total: %i"
                 print("\nCTRL-C caught, exiting")
                 sys.exit(1)
 
-            # check whether to end if no infecious persons remain.
-            # check if self.frame is above some threshold to prevent early breaking when simulation
-            # starts initially with no infections.
+            # Si no quedan personas infectadas
+            # Inicialmente sin infectados
             if self.Config.endif_no_infections and self.frame >= 500:
                 if (
                     len(
@@ -252,21 +224,25 @@ dead: %i, of total: %i"
         if self.Config.save_data:
             save_data(self.population, self.pop_tracker)
 
-        # report outcomes
+        # Al finalizar la simulación, resumen.
         print("\n-----stopping-----\n")
-        print("total timesteps taken: %i" % self.frame)
-        print("total dead: %i" % len(self.population[self.population[:, 6] == 3]))
-        print("total recovered: %i" % len(self.population[self.population[:, 6] == 2]))
-        print("total infected: %i" % len(self.population[self.population[:, 6] == 1]))
+        print("Instantes de tiempo simulados: %i" % self.frame)
+        print("Total fallecidos: %i" % len(self.population[self.population[:, 6] == 3]))
         print(
-            "total infectious: %i"
+            "Total recuperados: %i" % len(self.population[self.population[:, 6] == 2])
+        )
+        print("Total infectados: %i" % len(self.population[self.population[:, 6] == 1]))
+        print(
+            "Total infecciones: %i"
             % len(
                 self.population[
                     (self.population[:, 6] == 1) | (self.population[:, 6] == 4)
                 ]
             )
         )
-        print("total unaffected: %i" % len(self.population[self.population[:, 6] == 0]))
+        print(
+            "Total NO infectados: %i" % len(self.population[self.population[:, 6] == 0])
+        )
 
     def plot_sir(
         self, size=(6, 3), include_fatalities=False, title="S-I-R plot of simulation"
@@ -278,31 +254,24 @@ if __name__ == "__main__":
     # initialize
     sim = Simulation()
 
-    # set number of simulation steps
+    # ! Pasos en la simulación
     sim.Config.simulation_steps = 20000
 
     # set color mode
-    sim.Config.plot_style = "dark"  # can also be dark
+    sim.Config.plot_style = "default"  # puede ser 'dark' para un tema oscuro
 
-    # set colorblind mode if needed
-    # sim.Config.colorblind_mode = True
-    # set colorblind type (default deuteranopia)
-    # sim.Config.colorblind_type = 'deuteranopia'
-
-    # set reduced interaction
+    # ! Escenario: Interaccion reducida
     # sim.Config.set_reduced_interaction()
     # sim.population_init()
 
-    # set lockdown scenario
-    # sim.Config.set_lockdown(lockdown_percentage = 0.1, lockdown_compliance = 0.95)
+    # ! Escenario: Encierro
+    sim.Config.set_lockdown(lockdown_percentage = 0.1, lockdown_compliance = 0.95)
 
-    # set self-isolation scenario
+    # ! Escenario: Auto aislamiento
     # sim.Config.set_self_isolation(
     #     self_isolate_proportion=0.9,
     #     isolation_bounds=[0.02, 0.02, 0.09, 0.98],
     #     traveling_infects=False,
     # )
-    # sim.population_init()  # reinitialize population to enforce new roaming bounds
-
-    # run, hold CTRL+C in terminal to end scenario early
+    # sim.population_init()
     sim.run()

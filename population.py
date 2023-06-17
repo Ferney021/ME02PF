@@ -1,6 +1,5 @@
 """
-this file contains functions that help initialize the population
-parameters for the simulation
+Aqui se encuentran los parametros de la población
 """
 
 from glob import glob
@@ -15,51 +14,51 @@ from utils import check_folder
 def initialize_population(
     Config, mean_age=45, max_age=105, xbounds=[0, 1], ybounds=[0, 1]
 ):
-    """initialized the population for the simulation
+    """Inicializa la poblacion para la simulación
 
-    the population matrix for this simulation has the following columns:
+    La matriz de poblacion para esta simulación contiene las siguientes columnas:
 
-    0 : unique ID
-    1 : current x coordinate
-    2 : current y coordinate
-    3 : current heading in x direction
-    4 : current heading in y direction
-    5 : current speed
-    6 : current state (0=healthy, 1=sick, 2=immune, 3=dead, 4=immune but infectious)
-    7 : age
-    8 : infected_since (frame the person got infected)
-    9 : recovery vector (used in determining when someone recovers or dies)
-    10 : in treatment
-    11 : active destination (0 = random wander, 1, .. = destination matrix index)
-    12 : at destination: whether arrived at destination (0=traveling, 1=arrived)
-    13 : wander_range_x : wander ranges on x axis for those who are confined to a location
-    14 : wander_range_y : wander ranges on y axis for those who are confined to a location
+    0 : ID Unico
+    1 : Coordenada X actual
+    2 : Coordenada Y actual
+    3 : Dirección en X actual
+    4 : Dirección en Y actual
+    5 : Velocidad actual
+    6 : Estado actual (0=Sano, 1=Enfermo, 2=Inmune, 3=Muerto, 4=Inmune pero infectado)
+    7 : Edad
+    8 : Infectado desde (Instante de tiempo en el que la persona fue infectada)
+    9 : Vector de recuperación
+    10 : En tratamiento
+    11 : Destino activo (0 = destino aleatorio, 1, .. = Indice matriz de destino)
+    12 : Ya esta en el destino? (0=Viajando , 1=En el destino)
+    13 : wander_range_x : Rango en X donde se encuentra confinado
+    14 : wander_range_y : Rango en Y donde se encuentra confinado
 
     Keyword arguments
     -----------------
     pop_size : int
-        the size of the population
+        Tamaño de la población
 
     mean_age : int
-        the mean age of the population. Age affects mortality chances
+        Edad minima de la población, la edad afecta la mortalidad
 
     max_age : int
-        the max age of the population
+        Edad maxima de la población
 
     xbounds : 2d array
-        lower and upper bounds of x axis
+        Limites del eje X
 
     ybounds : 2d array
-        lower and upper bounds of y axis
+        Limites del eje Y
     """
 
-    # initialize population matrix
+    # Inicializa la matriz de población
     population = np.zeros((Config.pop_size, 15))
 
-    # initalize unique IDs
+    # Inicializa los Ids unicos
     population[:, 0] = [x for x in range(Config.pop_size)]
 
-    # initialize random coordinates
+    # Inicializa coordenadas aleatorias
     population[:, 1] = np.random.uniform(
         low=xbounds[0] + 0.05, high=xbounds[1] - 0.05, size=(Config.pop_size,)
     )
@@ -67,14 +66,14 @@ def initialize_population(
         low=ybounds[0] + 0.05, high=ybounds[1] - 0.05, size=(Config.pop_size,)
     )
 
-    # initialize random headings -1 to 1
+    # Inicializa la direccion de -1 a 1
     population[:, 3] = np.random.normal(loc=0, scale=1 / 3, size=(Config.pop_size,))
     population[:, 4] = np.random.normal(loc=0, scale=1 / 3, size=(Config.pop_size,))
 
-    # initialize random speeds
+    # Inicializa la velocidad de la población
     population[:, 5] = np.random.normal(Config.speed, Config.speed / 3)
 
-    # initalize ages
+    # Inicializa las edades de la población
     std_age = (max_age - mean_age) / 3
     population[:, 7] = np.int32(
         np.random.normal(loc=mean_age, scale=std_age, size=(Config.pop_size,))
@@ -82,28 +81,25 @@ def initialize_population(
 
     population[:, 7] = np.clip(
         population[:, 7], a_min=0, a_max=max_age
-    )  # clip those younger than 0 years
+    )  # La edad minima no puede estar por debajo de 0
 
-    # build recovery_vector
     population[:, 9] = np.random.normal(loc=0.5, scale=0.5 / 3, size=(Config.pop_size,))
 
     return population
 
 
 def initialize_destination_matrix(pop_size, total_destinations):
-    """intializes the destination matrix
+    """Inicializa la matriz de destinos
 
-    function that initializes the destination matrix used to
-    define individual location and roam zones for population members
+    Función que inicializa la matriz de destino utilizada para definir la ubicación individual y las zonas de recorrido de los miembros de la población
 
     Keyword arguments
     -----------------
     pop_size : int
-        the size of the population
+        El tamaño de la población
 
     total_destinations : int
-        the number of destinations to maintain in the matrix. Set to more than
-        one if for example people can go to work, supermarket, home, etc.
+        El numero de destinos, puede haber mas de un destino en caso de que la persona quiera ir al trabajo, a la casa, etc...
     """
 
     destinations = np.zeros((pop_size, total_destinations * 2))
@@ -114,72 +110,67 @@ def initialize_destination_matrix(pop_size, total_destinations):
 def set_destination_bounds(
     population, destinations, xmin, ymin, xmax, ymax, dest_no=1, teleport=True
 ):
-    """teleports all persons within limits
+    """Todas las personas deben estar dentro de los limites
 
-    Function that takes the population and coordinates,
-    teleports everyone there, sets destination active and
-    destination as reached
+    Función que toma la población y las coordenadas teletransporta a todos allí, establece el destino activo y destino como alcanzado
 
     Keyword arguments
     -----------------
     population : ndarray
-        the array containing all the population information
+        El arreglo que contiene toda la informacion de la población
 
     destinations : ndarray
-        the array containing all the destination information
+        El arreglo que contiene toda la información de destinos
 
     xmin, ymin, xmax, ymax : int or float
-        define the bounds on both axes where the individual can roam within
-        after reaching the defined area
+        Limites
 
     dest_no : int
-        the destination number to set as active (if more than one)
+        El destino que está activo actualmente
 
     teleport : bool
-        whether to instantly teleport individuals to the defined locations
+        Si se debe teletransportar inmediatamente
     """
 
-    # teleport
+    # Teletransporte
     if teleport:
         population[:, 1] = np.random.uniform(low=xmin, high=xmax, size=len(population))
         population[:, 2] = np.random.uniform(low=ymin, high=ymax, size=len(population))
 
-    # get parameters
+    # Obtener paramrtros
     x_center, y_center, x_wander, y_wander = get_motion_parameters(
         xmin, ymin, xmax, ymax
     )
 
-    # set destination centers
+    # Configurar centros del destino
     destinations[:, (dest_no - 1) * 2] = x_center
     destinations[:, ((dest_no - 1) * 2) + 1] = y_center
 
-    # set wander bounds
+    # Configurar limites de recorrido
     population[:, 13] = x_wander
     population[:, 14] = y_wander
 
-    population[:, 11] = dest_no  # set destination active
-    population[:, 12] = 1  # set destination reached
+    population[:, 11] = dest_no  # Configurar destino activo
+    population[:, 12] = 1  # Configurar destino cercano
 
     return population, destinations
 
 
 def save_data(population, pop_tracker):
-    """dumps simulation data to disk
+    """Guarda los datos de la población
 
-    Function that dumps the simulation data to specific files on the disk.
-    Saves final state of the population matrix, the array of infected over time,
-    and the array of fatalities over time
+    Funcion que almacena el estado de la simulacion
 
     Keyword arguments
     -----------------
     population : ndarray
-        the array containing all the population information
+        El areglo que contiene toda la informacion de la población 
 
     infected : list or ndarray
-        the array containing data of infections over time
+        El arreglo que contiene los infectados a travez del tiempo
 
     fatalities : list or ndarray
-        the array containing data of fatalities over time
+        El arreglo que contiene la informacion de muertes a travez del tiempo
     """
     num_files = len(glob("data/*"))
     check_folder("data/%i" % num_files)
@@ -190,31 +181,27 @@ def save_data(population, pop_tracker):
 
 
 def save_population(population, tstep=0, folder="data_tstep"):
-    """dumps population data at given timestep to disk
+    """Guarda los datos obtenidos en un instante de tiempo de la población
 
-    Function that dumps the simulation data to specific files on the disk.
-    Saves final state of the population matrix, the array of infected over time,
-    and the array of fatalities over time
+   Función que vuelca los datos de la simulación a archivos específicos del disco. Guarda el estado final de la matriz de población, la matriz de infectados a lo largo del tiempo y la matriz de víctimas mortales a lo largo del tiempo
 
     Keyword arguments
     -----------------
     population : ndarray
-        the array containing all the population information
+        El areglo que contiene toda la informacion de la población 
 
     tstep : int
-        the timestep that will be saved
+        El instante de tiempo que se esta guardando
     """
     check_folder("%s/" % (folder))
     np.save("%s/population_%i.npy" % (folder, tstep), population)
 
 
 class Population_trackers:
-    """class used to track population parameters
+    """ Clase para rastrar los parametros de la población
 
-    Can track population parameters over time that can then be used
-    to compute statistics or to visualise.
+    Puede realizar un seguimiento de los parámetros de la población a lo largo del tiempo que luego puede utilizarse para calcular estadísticas o visualizar.
 
-    TODO: track age cohorts here as well
     """
 
     def __init__(self):
@@ -223,11 +210,10 @@ class Population_trackers:
         self.recovered = []
         self.fatalities = []
 
-        # PLACEHOLDER - whether recovered individual can be reinfected
-        self.reinfect = False
+        # PLACEHOLDER - Si un recuperado se puede volver a infectar
+        self.reinfect = True
 
     def update_counts(self, population):
-        """docstring"""
         pop_size = population.shape[0]
         self.infectious.append(len(population[population[:, 6] == 1]))
         self.recovered.append(len(population[population[:, 6] == 2]))

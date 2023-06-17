@@ -1,5 +1,5 @@
 """
-contains all methods for visualisation tasks
+Contiene todos los metodos para las tareas de visualización
 """
 
 import matplotlib.pyplot as plt
@@ -11,7 +11,7 @@ from utils import check_folder
 
 
 def set_style(Config):
-    """sets the plot style"""
+    """Estilo de la gráfica"""
     if Config.plot_style.lower() == "dark":
         mpl.style.use("plot_styles/dark.mplstyle")
 
@@ -22,27 +22,23 @@ def build_fig(Config, figsize=(5, 7)):
     spec = fig.add_gridspec(ncols=1, nrows=2, height_ratios=[5, 2])
 
     ax1 = fig.add_subplot(spec[0, 0])
-    plt.title("infection simulation")
+    plt.title("Simulación de infecciones")
     plt.xlim(Config.xbounds[0], Config.xbounds[1])
     plt.ylim(Config.ybounds[0], Config.ybounds[1])
 
     ax2 = fig.add_subplot(spec[1, 0])
-    ax2.set_title("number of infected")
-    # ax2.set_xlim(0, simulation_steps)
+    ax2.set_title("Numero de infectados")
     ax2.set_ylim(0, Config.pop_size + 100)
-
-    # if
-
     return fig, spec, ax1, ax2
 
 
 def draw_tstep(Config, population, pop_tracker, frame, fig, spec, ax1, ax2):
-    # construct plot and visualise
+    # Construir gráfica y visualizar 
 
-    # set plot style
+    # Estilo del la gráfica
     set_style(Config)
 
-    # get color palettes
+    # Paleta de colores
     palette = Config.get_palette()
 
     spec = fig.add_gridspec(ncols=1, nrows=2, height_ratios=[5, 2])
@@ -58,11 +54,10 @@ def draw_tstep(Config, population, pop_tracker, frame, fig, spec, ax1, ax2):
             Config.isolation_bounds[2],
             Config.isolation_bounds[1],
             Config.isolation_bounds[3],
-            ax1,
-            addcross=False,
+            ax1
         )
 
-    # plot population segments
+    # Segmentos de población
     healthy = population[population[:, 6] == 0][:, 1:3]
     ax1.scatter(healthy[:, 0], healthy[:, 1], color=palette[0], s=2, label="healthy")
 
@@ -75,11 +70,10 @@ def draw_tstep(Config, population, pop_tracker, frame, fig, spec, ax1, ax2):
     fatalities = population[population[:, 6] == 3][:, 1:3]
     ax1.scatter(fatalities[:, 0], fatalities[:, 1], color=palette[3], s=2, label="dead")
 
-    # add text descriptors
     ax1.text(
         Config.x_plot[0],
         Config.y_plot[1] + ((Config.y_plot[1] - Config.y_plot[0]) / 100),
-        "timestep: %i, total: %i, healthy: %i infected: %i immune: %i fatalities: %i"
+        "Instante de tiempo: %i, Total: %i, Sanos: %i Infectados: %i Inmune: %i Fallecidos: %i"
         % (
             frame,
             len(population),
@@ -91,30 +85,23 @@ def draw_tstep(Config, population, pop_tracker, frame, fig, spec, ax1, ax2):
         fontsize=6,
     )
 
-    ax2.set_title("number of infected")
-    # ax2.set_xlim(0, simulation_steps)
+    ax2.set_title("Numero de infectados")
     ax2.set_ylim(0, Config.pop_size + 200)
 
     if Config.treatment_dependent_risk:
-        infected_arr = np.asarray(pop_tracker.infectious)
-        indices = np.argwhere(infected_arr >= Config.healthcare_capacity)
-
         ax2.plot(
             [Config.healthcare_capacity for x in range(len(pop_tracker.infectious))],
             "r:",
-            label="healthcare capacity",
+            label="Capacidad sanitaria",
         )
 
-    if Config.plot_mode.lower() == "default":
-        ax2.plot(pop_tracker.infectious, color=palette[1])
-        ax2.plot(pop_tracker.fatalities, color=palette[3], label="fatalities")
-    elif Config.plot_mode.lower() == "sir":
-        ax2.plot(pop_tracker.susceptible, color=palette[0], label="susceptible")
-        ax2.plot(pop_tracker.infectious, color=palette[1], label="infectious")
-        ax2.plot(pop_tracker.recovered, color=palette[2], label="recovered")
-        ax2.plot(pop_tracker.fatalities, color=palette[3], label="fatalities")
+    if Config.plot_mode.lower() == "sir":
+        ax2.plot(pop_tracker.susceptible, color=palette[0], label="Susceptible")
+        ax2.plot(pop_tracker.infectious, color=palette[1], label="Infecciones")
+        ax2.plot(pop_tracker.recovered, color=palette[2], label="Recuperados")
+        ax2.plot(pop_tracker.fatalities, color=palette[3], label="Fallecidos")
     else:
-        raise ValueError("incorrect plot_style specified, use 'sir' or 'default'")
+        raise ValueError("Valor incorrecto use 'sir' para ver los datos completos")
 
     ax2.legend(loc="best", fontsize=6)
 
@@ -136,41 +123,22 @@ def plot_sir(
     include_fatalities=False,
     title="S-I-R plot of simulation",
 ):
-    """plots S-I-R parameters in the population tracker
-
-    Keyword arguments
-    -----------------
-    Config : class
-        the configuration class
-
-    pop_tracker : ndarray
-        the population tracker, containing
-
-    size : tuple
-        size at which the plot will be initialised (default: (6,3))
-
-    include_fatalities : bool
-        whether to plot the fatalities as well (default: False)
-    """
-
-    # set plot style
+  
     set_style(Config)
 
-    # get color palettes
     palette = Config.get_palette()
 
-    # plot the thing
     plt.figure(figsize=size)
     plt.title(title)
-    plt.plot(pop_tracker.susceptible, color=palette[0], label="susceptible")
-    plt.plot(pop_tracker.infectious, color=palette[1], label="infectious")
-    plt.plot(pop_tracker.recovered, color=palette[2], label="recovered")
+    plt.plot(pop_tracker.susceptible, color=palette[0], label="Susceptible")
+    plt.plot(pop_tracker.infectious, color=palette[1], label="Infecciones")
+    plt.plot(pop_tracker.recovered, color=palette[2], label="Recuperados")
     if include_fatalities:
-        plt.plot(pop_tracker.fatalities, color=palette[3], label="fatalities")
+        plt.plot(pop_tracker.fatalities, color=palette[3], label="Fallecidos")
 
     # add axis labels
-    plt.xlabel("time in hours")
-    plt.ylabel("population")
+    plt.xlabel("Tiempo en horas")
+    plt.ylabel("Población")
 
     # add legend
     plt.legend()
